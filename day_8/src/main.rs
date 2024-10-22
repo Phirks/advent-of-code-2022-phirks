@@ -1,10 +1,12 @@
-use std::cell::RefCell;
+use std::borrow::{Borrow, BorrowMut};
+use std::cell::{Ref, RefCell};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::iter::Enumerate;
 use std::ops::Deref;
 use std::panic::Location;
 
+#[derive(Clone, Copy, Debug)]
 struct Tree {
     left: Option<u8>,
     right: Option<u8>,
@@ -32,10 +34,10 @@ impl Tree {
 
     fn pull(
         &mut self,
-        left: Option<&Tree>,
-        right: Option<&Tree>,
-        top: Option<&Tree>,
-        bottom: Option<&Tree>,
+        left: Option<Tree>,
+        right: Option<Tree>,
+        top: Option<Tree>,
+        bottom: Option<Tree>,
     ) {
         //The following pulls the data from the neighboring trees to find out if it's hidden
         if self.hidden.is_none() {
@@ -52,6 +54,7 @@ impl Tree {
                 }
             } else {
                 self.left = Some(0);
+                println!("{:?}",self)
             }
             if let Some(right_tree) = right {
                 let height = right_tree.height.clone();
@@ -108,73 +111,55 @@ impl Tree {
                     && self.bottom.unwrap() >= self.height,
             );
         }
+        println!("{:?}",self)
     }
 }
 
-fn find_tree(forest: &Vec<RefCell<Tree>>, i: usize, j: usize) {
-    let target_tree = forest
-        .iter()
-        .find(|tree| tree.borrow_mut().location == (i, j))
-        .unwrap()
-        .borrow_mut()
-        .deref();
-    if target_tree.hidden.is_some() {
-        let left_tree = if i > 0 {
-            Some(
-                *forest
-                    .iter()
-                    .find(|tree| tree.borrow_mut().location == (i - 1, j))
-                    .unwrap()
-                    .borrow_mut()
-                    .deref(),
-            )
-        } else {
-            None
-        };
-        let right_tree = if j < 20 {
-            Some(
-                *forest
-                    .iter()
-                    .find(|tree| tree.borrow_mut().location == (i + 1, j))
-                    .unwrap()
-                    .borrow()
-                    .deref(),
-            )
-        } else {
-            None
-        };
-        let top_tree = if j > 0 {
-            Some(
-                *forest
-                    .iter()
-                    .find(|tree| tree.borrow_mut().location == (i, j - 1))
-                    .unwrap()
-                    .borrow_mut()
-                    .deref(),
-            )
-        } else {
-            None
-        };
-        let bottom_tree = forest
-            .iter()
-            .find(|tree| tree.borrow_mut().location == (i, j + 1))
-            .unwrap()
-            .borrow_mut()
-            .deref();
-        target_tree.pull(left_tree, right_tree, top_tree, Some(bottom_tree))
-    }
+fn grab_tree(forest: &mut Vec<Vec<Tree>>,i: usize,j: usize){
+    let left_tree = if i>0 {
+        Some(forest[i-1][j].clone())
+    } else {
+        None
+    };
+    let right_tree = if i<20 {
+        Some(forest[i+1][j].clone())
+    } else {
+        None
+    };
+    let top_tree = if j>0 {
+        Some(forest[i][j-1].clone())
+    } else {
+        None
+    };
+    let bottom_tree = if j<20 {
+        Some(forest[i][j+1].clone())
+    } else {
+        None
+    };
+
+    
+    let mut target_tree = forest[i][j];
+    target_tree.pull(left_tree, right_tree, top_tree, bottom_tree);
+    println!("{:?}",target_tree);
+
 }
+
 
 fn main() {
     let f = File::open("input.txt").unwrap();
     let reader = BufReader::new(f);
-    let mut forest: Vec<RefCell<Tree>> = vec![];
+    let mut forest: Vec<Vec<Tree>> = vec![];
     for (i, line) in reader.lines().enumerate() {
+        let mut tree_line: Vec<Tree> = vec![];
         for (j, char) in line.unwrap().chars().enumerate() {
-            forest.push(RefCell::new(Tree::new(
+            let mut tree = Tree::new(
                 char.to_digit(11).unwrap() as u8,
                 (i, j),
-            )));
+            );
+            tree_line.push(tree);
         }
+        forest.push(tree_line);
     }
+    forest = grab_tree(&mut forest, 0, 0);
+    println!("{:?}",forest[0][0].clone())
 }
