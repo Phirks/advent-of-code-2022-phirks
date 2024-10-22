@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::iter::Enumerate;
+use std::ops::Deref;
 use std::panic::Location;
 
 struct Tree {
@@ -30,10 +32,10 @@ impl Tree {
 
     fn pull(
         &mut self,
-        left: Option<Tree>,
-        right: Option<Tree>,
-        top: Option<Tree>,
-        bottom: Option<Tree>,
+        left: Option<&Tree>,
+        right: Option<&Tree>,
+        top: Option<&Tree>,
+        bottom: Option<&Tree>,
     ) {
         //The following pulls the data from the neighboring trees to find out if it's hidden
         if self.hidden.is_none() {
@@ -109,21 +111,70 @@ impl Tree {
     }
 }
 
-fn main() {
-    let f = File::open("input.txt").unwrap();
-    let reader = BufReader::new(f);
-    let mut forest: Vec<Tree> = vec![];
-    for (i, line) in reader.lines().enumerate() {
-        for (j, char) in line.unwrap().chars().enumerate() {
-            forest.push(Tree::new(char.to_digit(11).unwrap() as u8, (i, j)));
-        }
-    }
-    for tree in forest.iter_mut() {
-        let (x, y) = tree.location;
-        let left_tree = if x > 0 {
-            Some(forest.iter().find(|s| s.location == (x - 1, y)))
+fn find_tree(forest: &Vec<RefCell<Tree>>, i: usize, j: usize) {
+    let target_tree = forest
+        .iter()
+        .find(|tree| tree.borrow_mut().location == (i, j))
+        .unwrap()
+        .borrow_mut()
+        .deref();
+    if target_tree.hidden.is_some() {
+        let left_tree = if i > 0 {
+            Some(
+                *forest
+                    .iter()
+                    .find(|tree| tree.borrow_mut().location == (i - 1, j))
+                    .unwrap()
+                    .borrow_mut()
+                    .deref(),
+            )
         } else {
             None
         };
+        let right_tree = if j < 20 {
+            Some(
+                *forest
+                    .iter()
+                    .find(|tree| tree.borrow_mut().location == (i + 1, j))
+                    .unwrap()
+                    .borrow()
+                    .deref(),
+            )
+        } else {
+            None
+        };
+        let top_tree = if j > 0 {
+            Some(
+                *forest
+                    .iter()
+                    .find(|tree| tree.borrow_mut().location == (i, j - 1))
+                    .unwrap()
+                    .borrow_mut()
+                    .deref(),
+            )
+        } else {
+            None
+        };
+        let bottom_tree = forest
+            .iter()
+            .find(|tree| tree.borrow_mut().location == (i, j + 1))
+            .unwrap()
+            .borrow_mut()
+            .deref();
+        target_tree.pull(left_tree, right_tree, top_tree, Some(bottom_tree))
+    }
+}
+
+fn main() {
+    let f = File::open("input.txt").unwrap();
+    let reader = BufReader::new(f);
+    let mut forest: Vec<RefCell<Tree>> = vec![];
+    for (i, line) in reader.lines().enumerate() {
+        for (j, char) in line.unwrap().chars().enumerate() {
+            forest.push(RefCell::new(Tree::new(
+                char.to_digit(11).unwrap() as u8,
+                (i, j),
+            )));
+        }
     }
 }
