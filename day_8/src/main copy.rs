@@ -16,7 +16,6 @@ struct Tree {
     location: (usize, usize),
     hidden: Option<bool>,
     complete: bool,
-    visible_trees: Option<i32>,
 }
 
 impl Tree {
@@ -30,7 +29,6 @@ impl Tree {
             location: location,
             hidden: None,
             complete: false,
-            visible_trees: None,
         }
     }
 
@@ -192,55 +190,27 @@ fn main() {
     }
     let ilen = forest.len();
     let jlen = forest[0].len();
-    let mut max = 0;
 
     for i in 0..ilen {
         for j in 0..jlen {
-            let (mut l, mut r, mut t, mut b) = (0, 0, 0, 0);
-            let mut height = 0;
-            {
-                height = forest[i][j].height;
-            }
-            if j > 0 {
-                for jl in (0..j).rev() {
-                    l += 1;
-                    if forest[i][jl].height >= height {
-                        break;
-                    }
-                }
-            }
-            if j < jlen {
-                for jr in j + 1..jlen {
-                    r += 1;
-                    if forest[i][jr].height >= height {
-                        break;
-                    }
-                }
-            }
-            if i < ilen {
-                for ib in i + 1..ilen {
-                    b += 1;
-                    if forest[ib][j].height >= height {
-                        break;
-                    }
-                }
-            }
-            if i > 0 {
-                for it in (0..i).rev() {
-                    //println!("loop {} - {} >= {}", it, forest[it][j].height, height);
-                    t += 1;
-                    if forest[it][j].height >= height {
-                        break;
-                    }
-                }
-            }
-            let senic_score = l * r * t * b;
-            if max < senic_score {
-                max = senic_score;
+            parse_tree(&mut forest, i, j);
+        }
+    }
+    for i in 0..ilen {
+        for j in 0..jlen {
+            parse_tree(&mut forest, ilen - i - 1, jlen - j - 1);
+        }
+    }
+    let mut total = 0;
+    for i in 0..ilen {
+        for j in 0..jlen {
+            //print!("{}", parse_tree(&mut forest, i, j));
+            if parse_tree(&mut forest, i, j) == 0 {
+                total += 1;
             }
         }
-        //print!("\n");
+        // print!("\n");
     }
-    println!("{}", max);
+    println!("{}", total);
     //println!("{:?}",forest[0][0].clone())
 }
